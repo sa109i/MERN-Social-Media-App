@@ -8,7 +8,15 @@ import path from 'path'
 import multer from 'multer'
 import helmet from 'helmet'
 import { fileURLToPath } from 'url'
+ 
+import authRoutes from './routes/authRoute.js'
+import userRoutes from './routes/userRoute.js'
+import postRoutes from './routes/postRoute.js'
 
+import { registerUser } from './controllers/auth.js'
+import { createPost } from './controllers/post.js'
+
+import { verifyToken } from './middleware/auth.js'
 
 /* CONFIGURATIONS */
 
@@ -30,26 +38,29 @@ app.use('/assets', express.static(path.join(__dirname, 'public/assets')))
 
 
 /* FILE STORAGE */
-const storage = multer.diskStorage({
+export const storage = multer.diskStorage({
     destination: function(req, file, cb) {
-        cb(null, 'public/assets')
+        cb(null, path.join(__dirname, "../public/assets"))
     },
     filename: function(req, file, cb) {
-        cb(null, file.originalname)
-    }
+        cb(null, `_${Date.now()} ${file.originalname}`)
+    } 
 })
 
-const upload = multer({ storage }) 
+const upload = multer({ storage })
 
+app.post("/register", upload.single('cover') ,registerUser)
+app.post("/posts", verifyToken, upload.single("picture"), createPost)
 
-app.post('/auth/register', upload.single('cover'), register)
-
+app.use('/auth', authRoutes)
+app.use('/users', userRoutes)
+app.use('/posts', postRoutes)
 
 const PORT = process.env.PORT
 
 mongoose.connect(process.env.MONGO_URL)  
     .then(() => {
-        console.log("connection established")
+        console.log("connection established") 
         app.listen(PORT, () => {
             console.log(`server is listening on ${PORT}`)
         })
